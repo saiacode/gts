@@ -50,7 +50,7 @@ services:
       - sftp:/data/incoming
       - ssh_vol:/ssh
     ports:
-      - 53000:22
+      - 53100:22
     networks:
       - mongo
     environment:
