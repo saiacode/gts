@@ -1,1 +1,5 @@
 # gts
+
+METEOR_SETTINGS
+DOMAIN
+NAME
