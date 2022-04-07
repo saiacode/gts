@@ -1,0 +1,60 @@
+version: "3.8"
+
+networks:
+  mongo:
+    external: true
+    name: mongo-public
+  proxy:
+    external: true
+    name: traefik-public
+volumes:
+  sftp:
+  ssh_vol:
+    external: true
+
+services:
+  meteor:
+    image: aditzend/gtsystem:4.0.4
+    labels:
+      # The labels are useful for Traefik only
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      # Get the routes from http
+      - "traefik.http.routers.${NAME}_router.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.${NAME}_router.entrypoints=web"
+        # Redirect these routes to https
+      - "traefik.http.middlewares.${NAME}_redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.routers.${NAME}_router.middlewares=${NAME}_redirect-to-https@docker"
+      # Get the routes from https
+      - "traefik.http.routers.${NAME}_router-secured.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.${NAME}_router-secured.entrypoints=web-secure"
+      # Apply autentificiation with http challenge
+      - "traefik.http.routers.${NAME}_router-secured.tls=true"
+      - "traefik.http.routers.${NAME}_router-secured.tls.certresolver=myhttpchallenge"
+    ports:
+      - 3000:3000
+    environment:
+      MONGO_URL: "mongodb://${MONGO_ADDRESS}:27017/${MONGO_DB}"
+      ROOT_URL: "https://${DOMAIN}"
+      EXACT_NODE_VERSION: "true"
+      NODE_VERSION: "4.8.2"
+      METEOR_SETTINGS: ${METEOR_SETTINGS}
+    networks:
+      - mongo
+      - proxy
+  sftp:
+    image: writl/sftp
+    labels:
+      gts: "sftp"
+    volumes:
+      - sftp:/data/incoming
+      - ssh_vol:/ssh
+    ports:
+      - 53000:22
+    networks:
+      - mongo
+    environment:
+      - USER:sftp
+      - PASS=${SFTP_PASS}
+      - USER_ID=33
+      - GROUP_ID=33
